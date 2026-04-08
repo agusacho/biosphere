@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kopi Finansial Pro - Owner Kelola User</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f3f5e9; margin: 0; padding: 20px; }
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .login-card {
+            background: white; border-radius: 40px; padding: 32px; width: 420px;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .login-card h2 { color: #3b5e2b; margin-bottom: 24px; }
+        .login-card input {
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 30px;
+            border: 1px solid #cfdec2; font-size: 1rem;
+        }
+        .login-card button {
+            background: #7faa5d; width: 100%; padding: 12px; margin-top: 10px;
+            border-radius: 40px; font-weight: bold; color: white; cursor: pointer;
+            font-size: 1rem; border: none;
+        }
+        .login-card button:hover { background: #5e8442; }
+        .error-msg { color: #d9534f; font-size: 0.8rem; margin-top: 8px; }
+        .user-header {
+            background: white; padding: 10px 24px; border-radius: 60px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .summary-cards { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 25px; }
+        .card {
+            background: white; border-radius: 24px; padding: 12px 20px; flex: 1; min-width: 140px;
+            text-align: center; border: 1px solid #e2e6d9;
+        }
+        .card h3 { margin: 0; font-size: 0.8rem; font-weight: 500; color: #6f6e5c; }
+        .card .value { font-size: 1.5rem; font-weight: 800; margin-top: 6px; }
+        .profit { background: #ecf7e6; border-left: 4px solid #2c7a2d; }
+        .expense { background: #fff3e8; border-left: 4px solid #d9a13b; }
+        .income { background: #e6f2ef; border-left: 4px solid #2f7d6b; }
+        .dashboard { display: flex; flex-wrap: wrap; gap: 24px; }
+        .form-panel, .table-panel {
+            background: white; border-radius: 28px; padding: 20px 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+        .form-panel { flex: 1.2; min-width: 320px; }
+        .table-panel { flex: 2; min-width: 500px; overflow-x: auto; }
+        .report-panel {
+            background: white; border-radius: 28px; padding: 20px 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+        .user-management-panel {
+            background: #f9f6ef;
+            border-radius: 28px;
+            padding: 20px 24px;
+            margin-top: 20px;
+            border: 1px solid #e2dccd;
+        }
+        .form-group { margin-bottom: 18px; }
+        label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.85rem; color: #3a4b2e; }
+        select, input {
+            width: 100%; padding: 10px 12px; border-radius: 20px;
+            border: 1px solid #cfdec2; background: #fefef7; font-size: 0.9rem;
+        }
+        .row-2col { display: flex; gap: 12px; }
+        .row-2col .form-group { flex: 1; }
+        button {
+            background: #7faa5d; border: none; padding: 10px 20px; border-radius: 40px;
+            font-weight: bold; color: white; cursor: pointer; transition: 0.2s;
+            font-size: 0.9rem; margin-right: 10px; margin-bottom: 8px;
+        }
+        button:hover { background: #5e8442; }
+        button:disabled { background: #bdc9af; cursor: not-allowed; opacity: 0.6; }
+        .btn-outline { background: transparent; border: 1px solid #7faa5d; color: #5e8442; }
+        .btn-outline:hover { background: #eef5e8; }
+        .btn-danger { background: #cf8f6b; }
+        .btn-report { background: #9b6b43; }
+        .btn-primary { background: #2c6e9e; }
+        .btn-excel { background: #1f724c; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { background: #eef3e6; padding: 12px 8px; text-align: left; }
+        td { padding: 10px 8px; border-bottom: 1px solid #e2e2d4; }
+        .action-btn { background: none; border: none; color: #b3622e; cursor: pointer; font-size: 1rem; padding: 4px 8px; }
+        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .delete-user-btn { background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1rem; }
+        .db-status { font-size: 0.7rem; background: #e8f0e3; border-radius: 20px; padding: 4px 12px; display: inline-block; }
+        .info-box { background: #e8f0e3; border-radius: 16px; padding: 10px; margin-top: 12px; font-size: 0.7rem; }
+        .period-badge { background: #2c6e9e; color: white; padding: 6px 16px; border-radius: 30px; font-size: 0.8rem; display: inline-block; margin-bottom: 15px; }
+        .user-list { max-height: 200px; overflow-y: auto; margin-top: 12px; }
+        .user-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 12px; background: white; border-radius: 40px;
+            margin-bottom: 8px; border: 1px solid #e6e0cf;
+        }
+        .user-role-badge { padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; color: white; }
+        .export-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .hidden { display: none !important; }
+        @media (max-width: 780px) { body { padding: 12px; } .card .value { font-size: 1.2rem; } }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+        <h2>☕ Kopi Finansial Pro</h2>
+        <p>Owner dapat menambahkan user & export data</p>
+        <input type="text" id="loginUsername" placeholder="Username">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button id="loginBtn">Login</button>
+        <div id="loginError" class="error-msg"></div>
+        <div class="db-status" id="dbStatus">🔄 Menghubungkan ke database...</div>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="mainContent" style="display: none;">
+    <div class="container">
+        <div class="user-header">
+            <h2>☕ Kopi Finansial Pro</h2>
+            <div>
+                <span id="userNameDisplay" style="margin-right: 15px;"></span>
+                <span id="roleBadge" style="padding:4px 12px; border-radius:20px;"></span>
+                <button id="logoutBtn" class="btn-outline" style="margin-left:15px;">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- PANEL LAPORAN - HANYA UNTUK OWNER -->
+        <div id="reportPanelContainer"></div>
+
+        <!-- RINGKASAN GLOBAL -->
+        <div class="summary-cards">
+            <div class="card income"><h3>💰 Total Penjualan</h3><div class="value" id="totalIncome">Rp0</div></div>
+            <div class="card"><h3>📦 Biaya Modal</h3><div class="value" id="totalModal">Rp0</div></div>
+            <div class="card profit"><h3>📊 Laba Kotor</h3><div class="value" id="grossProfit">Rp0</div></div>
+            <div class="card expense"><h3>⚙️ Operasional</h3><div class="value" id="totalOperational">Rp0</div></div>
+            <div class="card profit"><h3>🏆 Laba Bersih</h3><div class="value" id="netProfit">Rp0</div></div>
+            <div class="card"><h3>📋 Transaksi</h3><div class="value" id="transCount">0</div></div>
+        </div>
+
+        <div class="dashboard">
+            <div class="form-panel">
+                <h3>➕ Catat Transaksi Baru</h3>
+                <div class="row-2col">
+                    <div class="form-group">
+                        <label>📌 Kategori</label>
+                        <select id="transCategory">
+                            <option value="income">💵 Pemasukan (Penjualan)</option>
+                            <option value="modal">📦 Biaya Modal / HPP</option>
+                            <option value="operational">⚙️ Biaya Operasional</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📅 Tanggal</label>
+                        <input type="date" id="transDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>📦 Item / Produk</label>
+                    <select id="itemSelect"></select>
+                </div>
+                <div class="row-2col">
+                    <div class="form-group"><label>🔢 Jumlah</label><input type="number" id="quantity" value="1" step="1" min="0.5"></div>
+                    <div class="form-group"><label>💰 Harga Satuan (Rp)</label><input type="number" id="unitPrice" value="0" step="1000"></div>
+                </div>
+                <div class="form-group"><label>📝 Catatan</label><input type="text" id="notes" placeholder="keterangan"></div>
+                <div><button id="addBtn">➕ Tambah Transaksi</button><button id="resetBtn" class="btn-outline">🗑 Reset</button></div>
+                <hr>
+                
+                <!-- EXPORT BUTTONS - HANYA UNTUK OWNER (akan ditampilkan via JS) -->
+                <div id="exportButtonsContainer"></div>
+                
+                <!-- HAPUS SEMUA DATA - HANYA UNTUK OWNER -->
+                <button id="clearAllBtn" class="btn-danger" style="display:none;">⚠️ Hapus Semua Data</button>
+                
+                <div class="info-box" id="infoPanel"></div>
+                
+                <!-- PANEL MANAJEMEN USER (hanya untuk Owner) -->
+                <div id="userManagementPanel" class="user-management-panel" style="display:none;">
+                    <h3 style="margin-top:0;">👥 Manajemen User <span style="font-size:0.7rem;">(Owner Only)</span></h3>
+                    <div class="row-2col">
+                        <div class="form-group">
+                            <label>Username Baru</label>
+                            <input type="text" id="newUsername" placeholder="cth: karyawan1">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="newPassword" placeholder="********">
+                        </div>
+                    </div>
+                    <div class="row-2col">
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="newUserRole">
+                                <option value="admin">Admin (Pemasukan & Modal)</option>
+                                <option value="staff">Staff (Hanya Pemasukan)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button id="addUserBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah User</button>
+                        </div>
+                    </div>
+                    <div id="userListContainer" class="user-list">
+                        <!-- Daftar user akan ditampilkan di sini -->
+                    </div>
+                    <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Owner tidak bisa dihapus. Hanya bisa menambah/menghapus Admin & Staff.</div>
+                </div>
+            </div>
+            <div class="table-panel">
+                <div style="overflow-x: auto; max-height: 450px;">
+                    <table id="dataTable">
+                        <thead>
+                            <tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga</th><th>Total</th><th>Catatan</th><th>Dibuat</th><th>Aksi</th></tr>
+                        </thead>
+                        <tbody id="tableBody"><tr><td colspan="9" style="text-align:center">Memuat data...</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <footer>👑 Owner: semua akses + export data + kelola user | Admin & Staff: tidak bisa export data</footer>
+    </div>
+</div>
+
+<script>
+    // ========== KONFIGURASI SUPABASE ==========
+    const SUPABASE_URL = "https://plbjrrtfnovjzewplljn.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYmpycnRmbm92anpld3BsbGpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MzE4NjgsImV4cCI6MjA5MTIwNzg2OH0.O7F6A5-vDxZfedN8YA1EOR_kPZXXMBBdsM5vsoKSNMc";
+    // ============================================
+
+    let supabaseClient = null;
+    let currentUser = null;
+    let transactions = [];
+    let currentReportData = [];
+    let currentReportLabel = "";
+    let allUsers = [];
+
+    // Master items
+    const itemsByCategory = {
+        income: ["Kopi Drip Bag / pack","Kopi Roasted (bean, grinds)","Minuman Kopi PET CAN 250ml","Minuman Kopi Botol Kale 250ml","Minuman Kopi Botol Kale 1L","Green Bean (jual)"],
+        modal: ["Green Bean (bahan baku)","Kemasan Box Drip Bag","Kemasan Sachet Non Ziplock","Filter Drip Bag","Pouch Zip Lock 100gr","Pouch Zip Lock 200gr","Pouch Zip Lock 500gr","Pouch Zip Lock 1000gr","Botol Kale 250ml","Botol Kale 1L","PET CAN 250ml","Kemasan Box Online","Fresh Milk","Syrup"],
+        operational: ["Energi (Gas, Listrik)","Transportasi (Mobil, Demob)","Sticker","Gaji Karyawan","Sewa Tempat","Perawatan Alat","Promosi & Iklan"]
+    };
+
+    function formatRupiah(angka) { return "Rp" + Math.round(angka).toLocaleString("id-ID"); }
+    
+    function updateItemDropdown() {
+        const cat = document.getElementById("transCategory").value;
+        const list = itemsByCategory[cat];
+        const sel = document.getElementById("itemSelect");
+        if(!sel) return;
+        sel.innerHTML = "";
+        list.forEach(item => {
+            const opt = document.createElement("option");
+            opt.value = item;
+            opt.textContent = item;
+            sel.appendChild(opt);
+        });
+    }
+
+    function canAccessCategory(cat) {
+        if(!currentUser) return false;
+        if(currentUser.role === "owner") return true;
+        if(currentUser.role === "admin") return cat === "income" || cat === "modal";
+        return cat === "income";
+    }
+
+    function canDeleteTransaction(t) {
+        return currentUser?.role === "owner" || (currentUser?.role === "admin" && t.creator_role === "staff");
+    }
+
+    function canExportReport() {
+        return currentUser?.role === "owner";
+    }
+
+    function canExportAll() {
+        return currentUser?.role === "owner";
+    }
+
+    function canClearAll() {
+        return currentUser?.role === "owner";
+    }
+
+    function canManageUsers() {
+        return currentUser?.role === "owner";
+    }
+
+    function updateCategoryDropdown() {
+        const sel = document.getElementById("transCategory");
+        if(!sel) return;
+        const options = sel.querySelectorAll("option");
+        if(currentUser?.role === "owner") {
+            options.forEach(o => { o.disabled = false; o.style.display = ""; });
+        } else if(currentUser?.role === "admin") {
+            options.forEach(o => {
+                if(o.value === "operational") { o.disabled = true; o.style.display = "none"; }
+                else { o.disabled = false; o.style.display = ""; }
+            });
+            if(sel.value === "operational") sel.value = "income";
+        } else {
+            options.forEach(o => {
+                if(o.value === "income") { o.disabled = false; o.style.display = ""; }
+                else { o.disabled = true; o.style.display = "none"; }
+            });
+            sel.value = "income";
+        }
+        updateItemDropdown();
+    }
+
+    // ========== FUNGSI MANAJEMEN USER ==========
+    async function loadUsers() {
+        if(!supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient.from("users").select("*").order("id");
+            if(error) throw error;
+            allUsers = data || [];
+            renderUserList();
+        } catch(e) {
+            console.error("Load users error:", e);
+        }
+    }
+
+    function renderUserList() {
+        const container = document.getElementById("userListContainer");
+        if(!container) return;
+        
+        const nonOwnerUsers = allUsers.filter(u => u.role !== "owner");
+        if(nonOwnerUsers.length === 0) {
+            container.innerHTML = "<div style='text-align:center; padding:15px; color:#888;'>Belum ada user selain Owner</div>";
+            return;
+        }
+        
+        container.innerHTML = "";
+        nonOwnerUsers.forEach(user => {
+            const div = document.createElement("div");
+            div.className = "user-item";
+            const roleColor = user.role === "admin" ? "#d9a13b" : "#6f6e5c";
+            const roleName = user.role === "admin" ? "Admin" : "Staff";
+            div.innerHTML = `
+                <div>
+                    <strong>${user.username}</strong> 
+                    <span class="user-role-badge" style="background:${roleColor};">${roleName}</span>
+                    <span style="font-size:0.65rem; color:#888; margin-left:8px;">${user.display}</span>
+                </div>
+                <button class="delete-user-btn" data-username="${user.username}" title="Hapus user">🗑️</button>
+            `;
+            container.appendChild(div);
+        });
+        
+        document.querySelectorAll(".delete-user-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const username = btn.getAttribute("data-username");
+                if(confirm(`Hapus user "${username}"?`)) {
+                    await deleteUser(username);
+                }
+            });
+        });
+    }
+
+    async function addNewUser() {
+        const username = document.getElementById("newUsername").value.trim();
+        const password = document.getElementById("newPassword").value;
+        const role = document.getElementById("newUserRole").value;
+        
+        if(!username) {
+            alert("Username tidak boleh kosong!");
+            return;
+        }
+        if(!password) {
+            alert("Password tidak boleh kosong!");
+            return;
+        }
+        if(username.length < 3) {
+            alert("Username minimal 3 karakter!");
+            return;
+        }
+        if(password.length < 4) {
+            alert("Password minimal 4 karakter!");
+            return;
+        }
+        
+        if(allUsers.some(u => u.username === username)) {
+            alert("Username sudah terdaftar!");
+            return;
+        }
+        
+        const display = role === "admin" ? "Admin" : "Staff";
+        const newUser = {
+            username: username,
+            password: password,
+            role: role,
+            display: display
+        };
+        
+        try {
+            const { error } = await supabaseClient.from("users").insert([newUser]);
+            if(error) throw error;
+            
+            alert(`✅ User "${username}" (${role}) berhasil ditambahkan!`);
+            document.getElementById("newUsername").value = "";
+            document.getElementById("newPassword").value = "";
+            await loadUsers();
+        } catch(e) {
+            alert("Gagal menambah user: " + e.message);
+        }
+    }
+
+    async function deleteUser(username) {
+        try {
+            const { error } = await supabaseClient.from("users").delete().eq("username", username);
+            if(error) throw error;
+            alert(`User "${username}" berhasil dihapus.`);
+            await loadUsers();
+        } catch(e) {
+            alert("Gagal menghapus user: " + e.message);
+        }
+    }
+
+    // ========== FUNGSI TRANSAKSI ==========
+    async function loadData() {
+        if(!supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient.from("transactions").select("*").order("id", { ascending: false });
+            if(error) throw error;
+            transactions = data || [];
+            renderTable();
+            updateSummary();
+            if(canExportReport()) {
+                generateReport();
+            }
+        } catch(e) {
+            console.error("Load data error:", e);
+        }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("tableBody");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+        if(transactions.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='9' style='text-align:center'>Belum ada data</td></tr>";
+            return;
+        }
+        transactions.forEach(tr => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = tr.category === "income" ? "💰 Penjualan" : (tr.category === "modal" ? "📦 Biaya Modal" : "⚙️ Operasional");
+            row.insertCell(1).innerText = tr.date;
+            row.insertCell(2).innerText = tr.item;
+            row.insertCell(3).innerText = tr.quantity;
+            row.insertCell(4).innerText = formatRupiah(tr.unit_price);
+            row.insertCell(5).innerText = formatRupiah(tr.total);
+            row.insertCell(6).innerText = tr.notes || "-";
+            row.insertCell(7).innerHTML = `<span style="font-size:0.65rem; background:#f0f0e8; border-radius:12px; padding:2px 6px;">${tr.created_by} (${tr.creator_role})</span>`;
+            const delBtn = document.createElement("button");
+            delBtn.innerText = "❌";
+            delBtn.className = "action-btn";
+            if(!canDeleteTransaction(tr)) { delBtn.disabled = true; delBtn.style.opacity = "0.4"; }
+            else { delBtn.onclick = () => deleteTransaction(tr.id); }
+            row.insertCell(8).appendChild(delBtn);
+        });
+    }
+
+    function updateSummary() {
+        let ti = 0, tm = 0, to = 0;
+        transactions.forEach(t => {
+            if(t.category === "income") ti += t.total;
+            else if(t.category === "modal") tm += t.total;
+            else to += t.total;
+        });
+        document.getElementById("totalIncome").innerText = formatRupiah(ti);
+        document.getElementById("totalModal").innerText = formatRupiah(tm);
+        document.getElementById("totalOperational").innerText = formatRupiah(to);
+        document.getElementById("grossProfit").innerText = formatRupiah(ti - tm);
+        document.getElementById("netProfit").innerText = formatRupiah(ti - tm - to);
+        document.getElementById("transCount").innerText = transactions.length;
+    }
+
+    async function deleteTransaction(id) {
+        if(!confirm("Hapus transaksi ini?")) return;
+        const { error } = await supabaseClient.from("transactions").delete().eq("id", id);
+        if(error) alert("Gagal hapus: " + error.message);
+        await loadData();
+    }
+
+    async function addTransaction() {
+        const category = document.getElementById("transCategory").value;
+        if(!canAccessCategory(category)) {
+            alert("Anda tidak memiliki akses untuk kategori ini!");
+            return;
+        }
+        let date = document.getElementById("transDate").value;
+        if(!date) { date = new Date().toISOString().slice(0,10); document.getElementById("transDate").value = date; }
+        const item = document.getElementById("itemSelect").value;
+        let qty = parseFloat(document.getElementById("quantity").value) || 1;
+        let price = parseFloat(document.getElementById("unitPrice").value) || 0;
+        let notes = document.getElementById("notes").value;
+        const total = qty * price;
+        if(!item) { alert("Pilih item"); return; }
+        const newId = Date.now();
+        const newTrans = {
+            id: newId, category, date, item, quantity: qty, unit_price: price, total, notes,
+            created_by: currentUser.username, creator_role: currentUser.role
+        };
+        const { error } = await supabaseClient.from("transactions").insert([newTrans]);
+        if(error) { alert("Gagal simpan: " + error.message); return; }
+        await loadData();
+        document.getElementById("quantity").value = "1";
+        document.getElementById("unitPrice").value = "0";
+        document.getElementById("notes").value = "";
+    }
+
+    async function clearAllData() {
+        if(!canClearAll()) { alert("Hanya Owner yang dapat menghapus semua data!"); return; }
+        if(confirm("Hapus SEMUA data? Tindakan permanen!")) {
+            const { error } = await supabaseClient.from("transactions").delete().neq("id", 0);
+            if(error) alert("Gagal hapus semua: " + error.message);
+            await loadData();
+        }
+    }
+
+    function exportAllToExcel() {
+        if(!canExportAll()) {
+            alert("⛔ Hanya OWNER yang dapat mengekspor semua data!");
+            return;
+        }
+        if(transactions.length === 0) { alert("Tidak ada data"); return; }
+        const wsData = [["Kategori","Tanggal","Item","Qty","Harga Satuan","Total","Catatan","Pembuat"]];
+        transactions.forEach(t => {
+            wsData.push([t.category === "income" ? "Pemasukan" : (t.category === "modal" ? "Biaya Modal" : "Operasional"), t.date, t.item, t.quantity, t.unit_price, t.total, t.notes || "", t.created_by]);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Semua Transaksi");
+        XLSX.writeFile(wb, `Semua_Transaksi_${new Date().toISOString().slice(0,19)}.xlsx`);
+        alert("✅ Semua data berhasil diexport!");
+    }
+
+    // ========== FUNGSI LAPORAN (HANYA UNTUK OWNER) ==========
+    function filterByDateRange(startDate, endDate) {
+        return transactions.filter(t => t.date >= startDate && t.date <= endDate);
+    }
+
+    function generateReport() {
+        if(!canExportReport()) return;
+        
+        const reportType = document.getElementById("reportType").value;
+        let filtered = [];
+        let label = "";
+        const today = new Date();
+        const todayStr = today.toISOString().slice(0,10);
+        
+        if(reportType === "daily") {
+            filtered = filterByDateRange(todayStr, todayStr);
+            label = `📅 Laporan Harian: ${todayStr}`;
+        } 
+        else if(reportType === "weekly") {
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 6);
+            const start = weekAgo.toISOString().slice(0,10);
+            const end = todayStr;
+            filtered = filterByDateRange(start, end);
+            label = `📆 Laporan Mingguan: ${start} s/d ${end}`;
+        }
+        else if(reportType === "monthly") {
+            const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+            const end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
+            filtered = filterByDateRange(start, end);
+            label = `🗓️ Laporan Bulanan: ${start} s/d ${end}`;
+        }
+        else if(reportType === "yearly") {
+            const start = new Date(today.getFullYear(), 0, 1).toISOString().slice(0,10);
+            const end = new Date(today.getFullYear(), 11, 31).toISOString().slice(0,10);
+            filtered = filterByDateRange(start, end);
+            label = `📅 Laporan Tahunan: ${start} s/d ${end}`;
+        }
+        else if(reportType === "custom") {
+            const start = document.getElementById("startDate").value;
+            const end = document.getElementById("endDate").value;
+            if(!start || !end) {
+                alert("Pilih tanggal mulai dan selesai!");
+                return;
+            }
+            filtered = filterByDateRange(start, end);
+            label = `📌 Laporan Custom: ${start} s/d ${end}`;
+        }
+        
+        currentReportData = filtered;
+        currentReportLabel = label;
+        
+        document.getElementById("periodInfo").innerHTML = `📊 ${label} | Total: ${filtered.length} transaksi`;
+        
+        let ti = 0, tm = 0, to = 0;
+        filtered.forEach(t => {
+            if(t.category === "income") ti += t.total;
+            else if(t.category === "modal") tm += t.total;
+            else to += t.total;
+        });
+        const gross = ti - tm;
+        const net = gross - to;
+        
+        const summaryHtml = `
+            <div class="card income"><h3>💰 Penjualan</h3><div class="value">${formatRupiah(ti)}</div></div>
+            <div class="card"><h3>📦 Biaya Modal</h3><div class="value">${formatRupiah(tm)}</div></div>
+            <div class="card profit"><h3>📊 Laba Kotor</h3><div class="value">${formatRupiah(gross)}</div></div>
+            <div class="card expense"><h3>⚙️ Operasional</h3><div class="value">${formatRupiah(to)}</div></div>
+            <div class="card profit"><h3>🏆 Laba Bersih</h3><div class="value">${formatRupiah(net)}</div></div>
+            <div class="card"><h3>📋 Transaksi</h3><div class="value">${filtered.length}</div></div>
+        `;
+        document.getElementById("reportSummary").innerHTML = summaryHtml;
+        
+        const tbody = document.getElementById("reportTableBody");
+        tbody.innerHTML = "";
+        if(filtered.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='8' style='text-align:center'>Tidak ada transaksi dalam periode ini</td></tr>";
+            return;
+        }
+        filtered.sort((a,b) => b.date.localeCompare(a.date)).forEach(tr => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = tr.category === "income" ? "Pemasukan" : (tr.category === "modal" ? "Biaya Modal" : "Operasional");
+            row.insertCell(1).innerText = tr.date;
+            row.insertCell(2).innerText = tr.item;
+            row.insertCell(3).innerText = tr.quantity;
+            row.insertCell(4).innerText = formatRupiah(tr.unit_price);
+            row.insertCell(5).innerText = formatRupiah(tr.total);
+            row.insertCell(6).innerText = tr.notes || "-";
+            row.insertCell(7).innerText = tr.created_by;
+        });
+    }
+
+    function exportReportToExcel() {
+        if(!canExportReport()) {
+            alert("⛔ Hanya OWNER yang dapat mengekspor laporan!");
+            return;
+        }
+        if(currentReportData.length === 0) {
+            alert("Tidak ada data laporan untuk diexport!");
+            return;
+        }
+        
+        const wsData = [["Kategori", "Tanggal", "Item", "Quantity", "Harga Satuan (Rp)", "Total (Rp)", "Catatan", "Dibuat Oleh"]];
+        currentReportData.forEach(t => {
+            wsData.push([
+                t.category === "income" ? "Pemasukan" : (t.category === "modal" ? "Biaya Modal" : "Biaya Operasional"),
+                t.date, t.item, t.quantity, t.unit_price, t.total, t.notes || "", t.created_by
+            ]);
+        });
+        
+        let ti = 0, tm = 0, to = 0;
+        currentReportData.forEach(t => {
+            if(t.category === "income") ti += t.total;
+            else if(t.category === "modal") tm += t.total;
+            else to += t.total;
+        });
+        
+        wsData.push([], ["RINGKASAN LAPORAN", "", "", "", "", "", "", ""]);
+        wsData.push(["Total Penjualan", "", "", "", "", ti, "", ""]);
+        wsData.push(["Total Biaya Modal", "", "", "", "", tm, "", ""]);
+        wsData.push(["Laba Kotor", "", "", "", "", ti - tm, "", ""]);
+        wsData.push(["Total Operasional", "", "", "", "", to, "", ""]);
+        wsData.push(["Laba Bersih", "", "", "", "", ti - tm - to, "", ""]);
+        
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{wch:20},{wch:12},{wch:35},{wch:10},{wch:16},{wch:18},{wch:25},{wch:15}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+        const filename = `Laporan_${currentReportLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,19)}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        alert("✅ Laporan berhasil diexport!");
+    }
+
+    // ========== RENDER EXPORT BUTTONS (HANYA UNTUK OWNER) ==========
+    function renderExportButtons() {
+        const container = document.getElementById("exportButtonsContainer");
+        if(!container) return;
+        
+        if(canExportAll()) {
+            container.innerHTML = `
+                <div class="export-buttons">
+                    <button id="exportAllBtn" class="btn-excel">📎 Export Semua ke Excel</button>
+                </div>
+            `;
+            document.getElementById("exportAllBtn").addEventListener("click", exportAllToExcel);
+        } else {
+            container.innerHTML = `<div style="font-size:0.7rem; color:#888; padding:5px 0;">🔒 Export data hanya untuk Owner</div>`;
+        }
+    }
+
+    // ========== RENDER PANEL LAPORAN (HANYA UNTUK OWNER) ==========
+    function renderReportPanel() {
+        const container = document.getElementById("reportPanelContainer");
+        if(!container) return;
+        
+        if(canExportReport()) {
+            container.innerHTML = `
+                <div class="report-panel">
+                    <h3 style="margin-top:0;">📊 Laporan & Export Data <span style="font-size:0.7rem; background:#2c7a2d; color:white; padding:2px 8px; border-radius:20px;">👑 Owner Only</span></h3>
+                    <div class="report-header">
+                        <div class="report-controls">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>📅 Periode Laporan</label>
+                                <select id="reportType">
+                                    <option value="daily">📆 Harian (Hari Ini)</option>
+                                    <option value="weekly">📅 Mingguan (7 Hari Terakhir)</option>
+                                    <option value="monthly">🗓️ Bulanan (Bulan Ini)</option>
+                                    <option value="yearly">📅 Tahunan (Tahun Ini)</option>
+                                    <option value="custom">📌 Custom (Pilih Tanggal)</option>
+                                </select>
+                            </div>
+                            <div id="customDateDiv" class="date-range" style="display:none;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>Dari Tanggal</label>
+                                    <input type="date" id="startDate">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>Sampai Tanggal</label>
+                                    <input type="date" id="endDate">
+                                </div>
+                                <button id="applyCustomBtn" class="btn-report">Terapkan</button>
+                            </div>
+                            <button id="generateReportBtn" class="btn-report">📊 Tampilkan Laporan</button>
+                            <button id="exportReportBtn" class="btn-excel">📎 Export Laporan ke Excel</button>
+                        </div>
+                    </div>
+                    <div id="periodInfo" class="period-badge">📋 Pilih periode laporan di atas</div>
+                    <div id="reportSummary" style="display: flex; flex-wrap: wrap; gap: 16px; margin: 15px 0;"></div>
+                    <div style="overflow-x: auto; max-height: 350px;">
+                        <table id="reportTable" style="width:100%;">
+                            <thead><tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga Satuan</th><th>Total</th><th>Catatan</th><th>Dibuat oleh</th></tr></thead>
+                            <tbody id="reportTableBody"><tr><td colspan="8" style="text-align:center;">Pilih periode laporan</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById("reportType").addEventListener("change", function() {
+                const type = this.value;
+                const customDiv = document.getElementById("customDateDiv");
+                if(type === "custom") {
+                    customDiv.style.display = "flex";
+                } else {
+                    customDiv.style.display = "none";
+                    generateReport();
+                }
+            });
+            document.getElementById("generateReportBtn").addEventListener("click", generateReport);
+            document.getElementById("exportReportBtn").addEventListener("click", exportReportToExcel);
+            document.getElementById("applyCustomBtn").addEventListener("click", () => {
+                const start = document.getElementById("startDate").value;
+                const end = document.getElementById("endDate").value;
+                if(start && end) generateReport();
+                else alert("Pilih tanggal mulai dan selesai!");
+            });
+            
+            const today = new Date().toISOString().slice(0,10);
+            if(document.getElementById("startDate")) document.getElementById("startDate").value = today;
+            if(document.getElementById("endDate")) document.getElementById("endDate").value = today;
+            generateReport();
+        } else {
+            container.innerHTML = `
+                <div class="report-panel" style="background:#f8f9fa; text-align:center; color:#6c757d;">
+                    <p style="margin:15px 0;">🔒 <strong>Laporan & Export Data</strong> hanya dapat diakses oleh <strong>OWNER</strong></p>
+                    <p style="font-size:0.75rem;">Silakan login sebagai Owner untuk melihat laporan keuangan lengkap.</p>
+                </div>
+            `;
+        }
+    }
+
+    function updateUIByRole() {
+        const isOwner = currentUser?.role === "owner";
+        
+        // Tampilkan/sembunyikan panel manajemen user
+        const userPanel = document.getElementById("userManagementPanel");
+        if(userPanel) {
+            userPanel.style.display = isOwner ? "block" : "none";
+        }
+        
+        // Clear all button
+        const clearAllBtn = document.getElementById("clearAllBtn");
+        if(clearAllBtn) {
+            clearAllBtn.style.display = isOwner ? "block" : "none";
+            if(isOwner) {
+                clearAllBtn.disabled = false;
+                clearAllBtn.style.opacity = "1";
+                clearAllBtn.onclick = clearAllData;
+            }
+        }
+        
+        // Render export buttons
+        renderExportButtons();
+        
+        const infoPanel = document.getElementById("infoPanel");
+        if(currentUser?.role === "owner") {
+            infoPanel.innerHTML = "👑 Owner: semua akses (Pemasukan, Modal, Operasional) + dapat export data + kelola user";
+        } else if(currentUser?.role === "admin") {
+            infoPanel.innerHTML = "🛡️ Admin: Pemasukan & Modal saja | 🔒 Tidak dapat export data";
+        } else {
+            infoPanel.innerHTML = "📋 Staff: hanya Pemasukan | 🔒 Tidak dapat export data";
+        }
+        
+        renderReportPanel();
+    }
+
+    // ========== INIT & LOGIN ==========
+    async function initSupabase() {
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const { error } = await supabaseClient.from("users").select("count", { count: "exact", head: true });
+            if(error) throw error;
+            document.getElementById("dbStatus").innerHTML = "✅ Database online siap";
+            document.getElementById("dbStatus").style.background = "#d4edda";
+            return true;
+        } catch(e) {
+            document.getElementById("dbStatus").innerHTML = "⚠️ " + e.message;
+            return false;
+        }
+    }
+
+    async function login() {
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        
+        try {
+            const { data, error } = await supabaseClient.from("users").select("*").eq("username", username).eq("password", password);
+            if(error || !data || data.length === 0) {
+                document.getElementById("loginError").innerText = "Username atau password salah!";
+                return;
+            }
+            
+            currentUser = data[0];
+            document.getElementById("loginOverlay").style.display = "none";
+            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("userNameDisplay").innerHTML = `${currentUser.display} (${currentUser.username})`;
+            const roleSpan = document.getElementById("roleBadge");
+            roleSpan.innerHTML = currentUser.role === "owner" ? "👑 OWNER" : (currentUser.role === "admin" ? "🛡️ ADMIN" : "📋 STAFF");
+            roleSpan.style.background = currentUser.role === "owner" ? "#2c7a2d" : (currentUser.role === "admin" ? "#d9a13b" : "#6f6e5c");
+            roleSpan.style.color = "white";
+            
+            await loadData();
+            await loadUsers();
+            updateCategoryDropdown();
+            updateUIByRole();
+            
+            if(!document.getElementById("transDate").value) {
+                document.getElementById("transDate").value = new Date().toISOString().slice(0,10);
+            }
+        } catch(e) {
+            document.getElementById("loginError").innerText = "Error: " + e.message;
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        document.getElementById("loginOverlay").style.display = "flex";
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("loginUsername").value = "";
+        document.getElementById("loginPassword").value = "";
+        document.getElementById("loginError").innerText = "";
+    }
+
+    function resetForm() {
+        document.getElementById("transCategory").value = "income";
+        updateCategoryDropdown();
+        document.getElementById("quantity").value = "1";
+        document.getElementById("unitPrice").value = "0";
+        document.getElementById("notes").value = "";
+        document.getElementById("transDate").value = new Date().toISOString().slice(0,10);
+    }
+
+    // Event listeners
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+    document.getElementById("addBtn").addEventListener("click", addTransaction);
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("transCategory").addEventListener("change", updateItemDropdown);
+    document.getElementById("addUserBtn").addEventListener("click", addNewUser);
+    document.getElementById("loginPassword").addEventListener("keypress", (e) => { if(e.key === "Enter") login(); });
+
+    updateItemDropdown();
+    initSupabase();
+</script>
+</body>
+</html>
