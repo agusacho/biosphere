@@ -128,8 +128,8 @@
 
 <div id="loginOverlay" class="login-overlay">
     <div class="login-card">
-        <h2>☕ Kopi Finansial Pro</h2>
-        <p>Harga jual otomatis sesuai harga dasar</p>
+        <h2>☕ Biosphere Roast Works</h2>
+        <p>Where Control Meets Craft</p>
         <input type="text" id="loginUsername" placeholder="Username">
         <input type="password" id="loginPassword" placeholder="Password">
         <button id="loginBtn">Login</button>
@@ -141,7 +141,7 @@
 <div id="mainContent" style="display: none;">
     <div class="container">
         <div class="user-header">
-            <h2>☕ Kopi Finansial Pro</h2>
+            <h2>☕ Biosphere Roast Works</h2>
             <div>
                 <span id="userNameDisplay" style="margin-right: 15px;"></span>
                 <span id="roleBadge" style="padding:4px 12px; border-radius:20px;"></span>
@@ -900,7 +900,7 @@
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             await supabaseClient.from("users").select("count", { count: "exact", head: true });
-            document.getElementById("dbStatus").innerHTML = "✅ Database online siap";
+            document.getElementById("dbStatus").innerHTML = "✅ Database Biosphere Roast Work Connected";
             return true;
         } catch(e) { document.getElementById("dbStatus").innerHTML = "⚠️ " + e.message; return false; }
     }
