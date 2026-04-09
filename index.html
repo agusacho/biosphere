@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kopi Finansial Pro - Owner Kelola Menu & HPP</title>
+    <title>Kopi Finansial Pro - Harga Jual Otomatis</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -86,18 +86,18 @@
         .btn-report { background: #9b6b43; }
         .btn-primary { background: #2c6e9e; }
         .btn-excel { background: #1f724c; }
-        .btn-small { padding: 5px 12px; font-size: 0.75rem; margin: 2px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         th { background: #eef3e6; padding: 12px 8px; text-align: left; }
         td { padding: 10px 8px; border-bottom: 1px solid #e2e2d4; }
         .action-btn { background: none; border: none; color: #b3622e; cursor: pointer; font-size: 1rem; padding: 4px 8px; }
         .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .delete-item-btn { background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1rem; margin-left: 8px; }
-        .edit-item-btn { background: none; border: none; color: #2c6e9e; cursor: pointer; font-size: 1rem; margin-right: 8px; }
+        .delete-item-btn, .edit-price-btn { background: none; border: none; cursor: pointer; font-size: 1rem; }
+        .delete-item-btn { color: #d9534f; margin-left: 8px; }
+        .edit-price-btn { color: #2c6e9e; margin-right: 8px; }
         .db-status { font-size: 0.7rem; background: #e8f0e3; border-radius: 20px; padding: 4px 12px; display: inline-block; }
         .info-box { background: #e8f0e3; border-radius: 16px; padding: 10px; margin-top: 12px; font-size: 0.7rem; }
         .period-badge { background: #2c6e9e; color: white; padding: 6px 16px; border-radius: 30px; font-size: 0.8rem; display: inline-block; margin-bottom: 15px; }
-        .list-container { max-height: 250px; overflow-y: auto; margin-top: 12px; }
+        .list-container { max-height: 300px; overflow-y: auto; margin-top: 12px; }
         .list-item {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 12px; background: white; border-radius: 40px;
@@ -105,22 +105,31 @@
         }
         .category-badge { padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; color: white; }
         .export-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-        .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #e2dccd; padding-bottom: 10px; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #e2dccd; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-btn { background: transparent; color: #5e8442; border: 1px solid #7faa5d; margin-right: 0; }
         .tab-btn.active { background: #7faa5d; color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .hidden { display: none !important; }
+        .price-info { font-size: 0.7rem; margin-top: 5px; padding: 5px 10px; background: #e8f0e3; border-radius: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .modal-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        .modal-card {
+            background: white; border-radius: 30px; padding: 25px; width: 350px;
+            text-align: center;
+        }
+        .modal-card input { margin: 10px 0; width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #cfdec2; }
         @media (max-width: 780px) { body { padding: 12px; } .card .value { font-size: 1.2rem; } }
     </style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
 <div id="loginOverlay" class="login-overlay">
     <div class="login-card">
         <h2>☕ Kopi Finansial Pro</h2>
-        <p>Owner dapat kelola menu & biaya HPP</p>
+        <p>Harga jual otomatis sesuai harga dasar</p>
         <input type="text" id="loginUsername" placeholder="Username">
         <input type="password" id="loginPassword" placeholder="Password">
         <button id="loginBtn">Login</button>
@@ -129,7 +138,6 @@
     </div>
 </div>
 
-<!-- MAIN CONTENT -->
 <div id="mainContent" style="display: none;">
     <div class="container">
         <div class="user-header">
@@ -141,13 +149,11 @@
             </div>
         </div>
 
-        <!-- PANEL LAPORAN - HANYA UNTUK OWNER -->
         <div id="reportPanelContainer"></div>
 
-        <!-- RINGKASAN GLOBAL -->
         <div class="summary-cards">
             <div class="card income"><h3>💰 Total Penjualan</h3><div class="value" id="totalIncome">Rp0</div></div>
-            <div class="card"><h3>📦 Biaya Modal</h3><div class="value" id="totalModal">Rp0</div></div>
+            <div class="card"><h3>📦 Biaya Modal (HPP)</h3><div class="value" id="totalModal">Rp0</div></div>
             <div class="card profit"><h3>📊 Laba Kotor</h3><div class="value" id="grossProfit">Rp0</div></div>
             <div class="card expense"><h3>⚙️ Operasional</h3><div class="value" id="totalOperational">Rp0</div></div>
             <div class="card profit"><h3>🏆 Laba Bersih</h3><div class="value" id="netProfit">Rp0</div></div>
@@ -175,9 +181,10 @@
                     <label>📦 Item / Produk</label>
                     <select id="itemSelect"></select>
                 </div>
+                <div id="priceInfoPanel" class="price-info"></div>
                 <div class="row-2col">
                     <div class="form-group"><label>🔢 Jumlah</label><input type="number" id="quantity" value="1" step="1" min="0.5"></div>
-                    <div class="form-group"><label>💰 Harga Satuan (Rp)</label><input type="number" id="unitPrice" value="0" step="1000"></div>
+                    <div class="form-group"><label>💰 Harga Jual (Rp)</label><input type="number" id="unitPrice" value="0" step="1000"></div>
                 </div>
                 <div class="form-group"><label>📝 Catatan</label><input type="text" id="notes" placeholder="keterangan"></div>
                 <div><button id="addBtn">➕ Tambah Transaksi</button><button id="resetBtn" class="btn-outline">🗑 Reset</button></div>
@@ -188,18 +195,16 @@
                 
                 <div class="info-box" id="infoPanel"></div>
                 
-                <!-- PANEL MANAJEMEN (Hanya untuk Owner) -->
                 <div id="managementPanel" class="management-panel" style="display:none;">
                     <h3 style="margin-top:0;">⚙️ Kelola Data Master <span style="font-size:0.7rem;">(Owner Only)</span></h3>
                     
                     <div class="tab-buttons">
-                        <button id="tabIncomeBtn" class="tab-btn active">📋 Menu Pemasukan</button>
+                        <button id="tabIncomeBtn" class="tab-btn active">📋 Menu + Harga Dasar</button>
                         <button id="tabModalBtn" class="tab-btn">📦 Biaya Modal (HPP)</button>
                         <button id="tabOperationalBtn" class="tab-btn">⚙️ Biaya Operasional</button>
                         <button id="tabUserBtn" class="tab-btn">👥 Manajemen User</button>
                     </div>
                     
-                    <!-- Tab Menu Pemasukan -->
                     <div id="tabIncome" class="tab-content active">
                         <div class="row-2col">
                             <div class="form-group">
@@ -207,16 +212,21 @@
                                 <input type="text" id="newIncomeName" placeholder="cth: Kopi Matcha 250ml">
                             </div>
                             <div class="form-group">
-                                <button id="addIncomeBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah Menu</button>
+                                <label>Harga Dasar / Harga Jual</label>
+                                <input type="number" id="newIncomeBasePrice" placeholder="Harga jual produk" value="0" step="500">
+                            </div>
+                        </div>
+                        <div class="row-2col">
+                            <div class="form-group">
+                                <button id="addIncomeBtn" class="btn-primary" style="margin-top:0;">➕ Tambah Menu</button>
                             </div>
                         </div>
                         <div id="incomeListContainer" class="list-container">
                             <div style="text-align:center; padding:15px;">Memuat data...</div>
                         </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Menu yang sudah digunakan dalam transaksi tidak bisa dihapus.</div>
+                        <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Harga dasar = harga jual otomatis saat memilih menu ini.</div>
                     </div>
                     
-                    <!-- Tab Biaya Modal (HPP) -->
                     <div id="tabModal" class="tab-content">
                         <div class="row-2col">
                             <div class="form-group">
@@ -227,13 +237,9 @@
                                 <button id="addModalBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah Biaya Modal</button>
                             </div>
                         </div>
-                        <div id="modalListContainer" class="list-container">
-                            <div style="text-align:center; padding:15px;">Memuat data...</div>
-                        </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Biaya Modal yang sudah digunakan dalam transaksi tidak bisa dihapus.</div>
+                        <div id="modalListContainer" class="list-container"><div style="text-align:center; padding:15px;">Memuat data...</div></div>
                     </div>
                     
-                    <!-- Tab Biaya Operasional -->
                     <div id="tabOperational" class="tab-content">
                         <div class="row-2col">
                             <div class="form-group">
@@ -244,40 +250,22 @@
                                 <button id="addOperationalBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah Biaya</button>
                             </div>
                         </div>
-                        <div id="operationalListContainer" class="list-container">
-                            <div style="text-align:center; padding:15px;">Memuat data...</div>
-                        </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Biaya Operasional yang sudah digunakan dalam transaksi tidak bisa dihapus.</div>
+                        <div id="operationalListContainer" class="list-container"><div style="text-align:center; padding:15px;">Memuat data...</div></div>
                     </div>
                     
-                    <!-- Tab Manajemen User -->
                     <div id="tabUser" class="tab-content">
                         <div class="row-2col">
-                            <div class="form-group">
-                                <label>Username Baru</label>
-                                <input type="text" id="newUsername" placeholder="cth: karyawan1">
-                            </div>
-                            <div class="form-group">
-                                <label>Password</label>
-                                <input type="password" id="newPassword" placeholder="********">
-                            </div>
+                            <div class="form-group"><label>Username Baru</label><input type="text" id="newUsername" placeholder="cth: karyawan1"></div>
+                            <div class="form-group"><label>Password</label><input type="password" id="newPassword" placeholder="********"></div>
                         </div>
                         <div class="row-2col">
                             <div class="form-group">
                                 <label>Role</label>
-                                <select id="newUserRole">
-                                    <option value="admin">Admin (Pemasukan & Modal)</option>
-                                    <option value="staff">Staff (Hanya Pemasukan)</option>
-                                </select>
+                                <select id="newUserRole"><option value="admin">Admin</option><option value="staff">Staff</option></select>
                             </div>
-                            <div class="form-group">
-                                <button id="addUserBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah User</button>
-                            </div>
+                            <div class="form-group"><button id="addUserBtn" class="btn-primary" style="margin-top:24px;">➕ Tambah User</button></div>
                         </div>
-                        <div id="userListContainer" class="list-container">
-                            <div style="text-align:center; padding:15px;">Memuat data...</div>
-                        </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:10px;">* Owner tidak bisa dihapus. Hanya bisa menambah/menghapus Admin & Staff.</div>
+                        <div id="userListContainer" class="list-container"><div style="text-align:center; padding:15px;">Memuat data...</div></div>
                     </div>
                 </div>
             </div>
@@ -285,23 +273,21 @@
                 <div style="overflow-x: auto; max-height: 450px;">
                     <table id="dataTable">
                         <thead>
-                            <tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga</th><th>Total</th><th>Catatan</th><th>Dibuat</th><th>Aksi</th></tr>
+                            <tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga Jual</th><th>Total</th><th>Laba Kotor</th><th>Catatan</th><th>Dibuat</th><th>Aksi</th></tr>
                         </thead>
-                        <tbody id="tableBody"><tr><td colspan="9" style="text-align:center">Memuat data...</td></tr>
+                        <tbody id="tableBody"><tr><td colspan="10" style="text-align:center">Memuat data...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-        <footer>👑 Owner: semua akses + kelola menu pemasukan, biaya modal, biaya operasional, & user</footer>
+        <footer>👑 Owner: mengatur harga dasar | Harga jual otomatis terisi sesuai harga dasar Owner</footer>
     </div>
 </div>
 
 <script>
-    // ========== KONFIGURASI SUPABASE ==========
     const SUPABASE_URL = "https://plbjrrtfnovjzewplljn.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYmpycnRmbm92anpld3BsbGpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MzE4NjgsImV4cCI6MjA5MTIwNzg2OH0.O7F6A5-vDxZfedN8YA1EOR_kPZXXMBBdsM5vsoKSNMc";
-    // ============================================
 
     let supabaseClient = null;
     let currentUser = null;
@@ -310,27 +296,79 @@
     let currentReportLabel = "";
     let allUsers = [];
     
-    // Data master items
-    let incomeItems = [];
+    let incomeItems = []; // { name, base_price (harga jual otomatis) }
     let modalItems = [];
     let operationalItems = [];
 
-    // Default items
-    const defaultIncomeItems = ["Kopi Drip Bag / pack","Kopi Roasted (bean, grinds)","Minuman Kopi PET CAN 250ml","Minuman Kopi Botol Kale 250ml","Minuman Kopi Botol Kale 1L","Green Bean (jual)"];
+    const defaultIncomeItems = [
+        { name: "Kopi Drip Bag / pack", base_price: 5000 },
+        { name: "Kopi Roasted (bean, grinds)", base_price: 40000 },
+        { name: "Minuman Kopi PET CAN 250ml", base_price: 8000 },
+        { name: "Minuman Kopi Botol Kale 250ml", base_price: 7000 },
+        { name: "Minuman Kopi Botol Kale 1L", base_price: 15000 },
+        { name: "Green Bean (jual)", base_price: 55000 }
+    ];
     const defaultModalItems = ["Green Bean (bahan baku)","Kemasan Box Drip Bag","Kemasan Sachet Non Ziplock","Filter Drip Bag","Pouch Zip Lock 100gr","Pouch Zip Lock 200gr","Pouch Zip Lock 500gr","Pouch Zip Lock 1000gr","Botol Kale 250ml","Botol Kale 1L","PET CAN 250ml","Kemasan Box Online","Fresh Milk","Syrup"];
     const defaultOperationalItems = ["Energi (Gas, Listrik)","Transportasi (Mobil, Demob)","Sticker","Gaji Karyawan","Sewa Tempat","Perawatan Alat","Promosi & Iklan"];
 
     function formatRupiah(angka) { return "Rp" + Math.round(angka).toLocaleString("id-ID"); }
     
+    function getBasePrice(itemName) {
+        const found = incomeItems.find(i => i.name === itemName);
+        return found ? found.base_price : 0;
+    }
+
+    // Set harga jual otomatis berdasarkan item yang dipilih
+    function setAutoSellingPrice() {
+        const cat = document.getElementById("transCategory").value;
+        if(cat === "income") {
+            const selectedItem = document.getElementById("itemSelect").value;
+            const basePrice = getBasePrice(selectedItem);
+            const priceInput = document.getElementById("unitPrice");
+            if(priceInput && basePrice > 0) {
+                priceInput.value = basePrice;
+            }
+            updatePriceInfo();
+        }
+    }
+
+    function updatePriceInfo() {
+        const cat = document.getElementById("transCategory").value;
+        const selectedItem = document.getElementById("itemSelect").value;
+        const priceInfoPanel = document.getElementById("priceInfoPanel");
+        
+        if(cat === "income" && selectedItem) {
+            const basePrice = getBasePrice(selectedItem);
+            const sellingPrice = parseFloat(document.getElementById("unitPrice").value) || 0;
+            const qty = parseFloat(document.getElementById("quantity").value) || 1;
+            const profitPerUnit = sellingPrice - basePrice;
+            const totalProfit = profitPerUnit * qty;
+            
+            if(basePrice > 0) {
+                priceInfoPanel.innerHTML = `
+                    <span>📊 Harga Dasar: ${formatRupiah(basePrice)}</span>
+                    <span>💰 Harga Jual: ${formatRupiah(sellingPrice)}</span>
+                    <span>📈 Laba/unit: ${formatRupiah(profitPerUnit)}</span>
+                    <span>🏆 Total Laba: ${formatRupiah(totalProfit)}</span>
+                `;
+            } else {
+                priceInfoPanel.innerHTML = `<span>⚠️ Harga dasar belum diatur. Owner dapat mengatur di menu Manajemen.</span>`;
+            }
+        } else {
+            priceInfoPanel.innerHTML = "";
+        }
+    }
+
     function updateItemDropdown() {
         const cat = document.getElementById("transCategory").value;
         let list = [];
-        if(cat === "income") list = incomeItems;
+        if(cat === "income") list = incomeItems.map(i => i.name);
         else if(cat === "modal") list = modalItems;
         else list = operationalItems;
         
         const sel = document.getElementById("itemSelect");
         if(!sel) return;
+        const currentValue = sel.value;
         sel.innerHTML = "";
         list.forEach(item => {
             const opt = document.createElement("option");
@@ -338,6 +376,15 @@
             opt.textContent = item;
             sel.appendChild(opt);
         });
+        
+        // Set harga jual otomatis jika kategori pemasukan
+        if(cat === "income") {
+            setAutoSellingPrice();
+        } else {
+            // Untuk kategori lain, reset harga jual ke 0
+            document.getElementById("unitPrice").value = 0;
+            updatePriceInfo();
+        }
     }
 
     function canAccessCategory(cat) {
@@ -354,7 +401,6 @@
     function canExportReport() { return currentUser?.role === "owner"; }
     function canExportAll() { return currentUser?.role === "owner"; }
     function canClearAll() { return currentUser?.role === "owner"; }
-    function canManageData() { return currentUser?.role === "owner"; }
 
     function updateCategoryDropdown() {
         const sel = document.getElementById("transCategory");
@@ -378,107 +424,55 @@
         updateItemDropdown();
     }
 
-    // ========== FUNGSI MANAJEMEN DATA MASTER ==========
-    async function loadMasterData() {
-        await loadIncomeItems();
-        await loadModalItems();
-        await loadOperationalItems();
-    }
-
+    // ========== FUNGSI MANAJEMEN MENU ==========
     async function loadIncomeItems() {
         try {
             const { data, error } = await supabaseClient.from("income_items").select("*").order("name");
             if(error) throw error;
             if(data && data.length > 0) {
-                incomeItems = data.map(item => item.name);
+                incomeItems = data.map(item => ({ name: item.name, base_price: item.base_price || 0 }));
             } else {
                 for(const item of defaultIncomeItems) {
-                    await supabaseClient.from("income_items").insert([{ name: item }]);
+                    await supabaseClient.from("income_items").insert([{ name: item.name, base_price: item.base_price }]);
                 }
                 incomeItems = [...defaultIncomeItems];
             }
             renderIncomeList();
             updateItemDropdown();
-        } catch(e) { console.error("Load income error:", e); incomeItems = [...defaultIncomeItems]; renderIncomeList(); }
-    }
-
-    async function loadModalItems() {
-        try {
-            const { data, error } = await supabaseClient.from("modal_items").select("*").order("name");
-            if(error) throw error;
-            if(data && data.length > 0) {
-                modalItems = data.map(item => item.name);
-            } else {
-                for(const item of defaultModalItems) {
-                    await supabaseClient.from("modal_items").insert([{ name: item }]);
-                }
-                modalItems = [...defaultModalItems];
-            }
-            renderModalList();
-            updateItemDropdown();
-        } catch(e) { console.error("Load modal error:", e); modalItems = [...defaultModalItems]; renderModalList(); }
-    }
-
-    async function loadOperationalItems() {
-        try {
-            const { data, error } = await supabaseClient.from("operational_items").select("*").order("name");
-            if(error) throw error;
-            if(data && data.length > 0) {
-                operationalItems = data.map(item => item.name);
-            } else {
-                for(const item of defaultOperationalItems) {
-                    await supabaseClient.from("operational_items").insert([{ name: item }]);
-                }
-                operationalItems = [...defaultOperationalItems];
-            }
-            renderOperationalList();
-            updateItemDropdown();
-        } catch(e) { console.error("Load operational error:", e); operationalItems = [...defaultOperationalItems]; renderOperationalList(); }
+        } catch(e) { 
+            console.error("Load income error:", e); 
+            incomeItems = [...defaultIncomeItems]; 
+            renderIncomeList(); 
+        }
     }
 
     async function addIncomeItem() {
         const newName = document.getElementById("newIncomeName").value.trim();
+        const newBasePrice = parseFloat(document.getElementById("newIncomeBasePrice").value) || 0;
         if(!newName) { alert("Nama menu tidak boleh kosong!"); return; }
-        if(incomeItems.includes(newName)) { alert("Menu sudah ada!"); return; }
+        if(incomeItems.some(i => i.name === newName)) { alert("Menu sudah ada!"); return; }
         try {
-            const { error } = await supabaseClient.from("income_items").insert([{ name: newName }]);
+            const { error } = await supabaseClient.from("income_items").insert([{ name: newName, base_price: newBasePrice }]);
             if(error) throw error;
-            incomeItems.push(newName);
+            incomeItems.push({ name: newName, base_price: newBasePrice });
             renderIncomeList();
             updateItemDropdown();
             document.getElementById("newIncomeName").value = "";
-            alert(`✅ Menu "${newName}" berhasil ditambahkan!`);
+            document.getElementById("newIncomeBasePrice").value = "0";
+            alert(`✅ Menu "${newName}" dengan harga ${formatRupiah(newBasePrice)} berhasil ditambahkan!`);
         } catch(e) { alert("Gagal: " + e.message); }
     }
 
-    async function addModalItem() {
-        const newName = document.getElementById("newModalName").value.trim();
-        if(!newName) { alert("Nama biaya modal tidak boleh kosong!"); return; }
-        if(modalItems.includes(newName)) { alert("Biaya modal sudah ada!"); return; }
+    async function updateIncomeBasePrice(itemName, newPrice) {
         try {
-            const { error } = await supabaseClient.from("modal_items").insert([{ name: newName }]);
+            const { error } = await supabaseClient.from("income_items").update({ base_price: newPrice }).eq("name", itemName);
             if(error) throw error;
-            modalItems.push(newName);
-            renderModalList();
+            const index = incomeItems.findIndex(i => i.name === itemName);
+            if(index !== -1) incomeItems[index].base_price = newPrice;
+            renderIncomeList();
             updateItemDropdown();
-            document.getElementById("newModalName").value = "";
-            alert(`✅ Biaya Modal "${newName}" berhasil ditambahkan!`);
-        } catch(e) { alert("Gagal: " + e.message); }
-    }
-
-    async function addOperationalItem() {
-        const newName = document.getElementById("newOperationalName").value.trim();
-        if(!newName) { alert("Nama biaya operasional tidak boleh kosong!"); return; }
-        if(operationalItems.includes(newName)) { alert("Biaya operasional sudah ada!"); return; }
-        try {
-            const { error } = await supabaseClient.from("operational_items").insert([{ name: newName }]);
-            if(error) throw error;
-            operationalItems.push(newName);
-            renderOperationalList();
-            updateItemDropdown();
-            document.getElementById("newOperationalName").value = "";
-            alert(`✅ Biaya Operasional "${newName}" berhasil ditambahkan!`);
-        } catch(e) { alert("Gagal: " + e.message); }
+            alert(`✅ Harga "${itemName}" diubah menjadi ${formatRupiah(newPrice)}`);
+        } catch(e) { alert("Gagal update harga: " + e.message); }
     }
 
     async function deleteIncomeItem(itemName) {
@@ -487,7 +481,7 @@
         if(confirm(`Hapus menu "${itemName}"?`)) {
             try {
                 await supabaseClient.from("income_items").delete().eq("name", itemName);
-                incomeItems = incomeItems.filter(i => i !== itemName);
+                incomeItems = incomeItems.filter(i => i.name !== itemName);
                 renderIncomeList();
                 updateItemDropdown();
                 alert(`✅ "${itemName}" berhasil dihapus!`);
@@ -495,32 +489,27 @@
         }
     }
 
-    async function deleteModalItem(itemName) {
-        const isUsed = transactions.some(t => t.category === "modal" && t.item === itemName);
-        if(isUsed) { alert(`⚠️ "${itemName}" sudah digunakan dalam transaksi dan tidak dapat dihapus!`); return; }
-        if(confirm(`Hapus biaya modal "${itemName}"?`)) {
-            try {
-                await supabaseClient.from("modal_items").delete().eq("name", itemName);
-                modalItems = modalItems.filter(i => i !== itemName);
-                renderModalList();
-                updateItemDropdown();
-                alert(`✅ "${itemName}" berhasil dihapus!`);
-            } catch(e) { alert("Gagal: " + e.message); }
-        }
-    }
-
-    async function deleteOperationalItem(itemName) {
-        const isUsed = transactions.some(t => t.category === "operational" && t.item === itemName);
-        if(isUsed) { alert(`⚠️ "${itemName}" sudah digunakan dalam transaksi dan tidak dapat dihapus!`); return; }
-        if(confirm(`Hapus biaya operasional "${itemName}"?`)) {
-            try {
-                await supabaseClient.from("operational_items").delete().eq("name", itemName);
-                operationalItems = operationalItems.filter(i => i !== itemName);
-                renderOperationalList();
-                updateItemDropdown();
-                alert(`✅ "${itemName}" berhasil dihapus!`);
-            } catch(e) { alert("Gagal: " + e.message); }
-        }
+    function showEditPriceModal(itemName, currentPrice) {
+        const modal = document.createElement("div");
+        modal.className = "modal-bg";
+        modal.innerHTML = `
+            <div class="modal-card">
+                <h3>✏️ Edit Harga</h3>
+                <p><strong>${itemName}</strong></p>
+                <input type="number" id="editPriceValue" value="${currentPrice}" step="500" placeholder="Harga jual produk">
+                <div style="margin-top:15px;">
+                    <button id="savePriceBtn" class="btn-primary">Simpan</button>
+                    <button id="cancelPriceBtn" class="btn-outline">Batal</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById("savePriceBtn").onclick = () => {
+            const newPrice = parseFloat(document.getElementById("editPriceValue").value) || 0;
+            updateIncomeBasePrice(itemName, newPrice);
+            modal.remove();
+        };
+        document.getElementById("cancelPriceBtn").onclick = () => modal.remove();
     }
 
     function renderIncomeList() {
@@ -530,19 +519,64 @@
         container.innerHTML = "";
         incomeItems.forEach(item => {
             const div = document.createElement("div"); div.className = "list-item";
-            div.innerHTML = `<div><strong>${item}</strong> <span class="category-badge" style="background:#2f7d6b;">Pemasukan</span></div>
-                <button class="delete-item-btn" data-name="${item}">🗑️</button>`;
+            div.innerHTML = `
+                <div>
+                    <strong>${item.name}</strong>
+                    <span class="category-badge" style="background:#2f7d6b;">Pemasukan</span>
+                    <span style="margin-left:10px; font-size:0.75rem;">💰 Harga: ${formatRupiah(item.base_price)}</span>
+                </div>
+                <div>
+                    <button class="edit-price-btn" data-name="${item.name}" data-price="${item.base_price}" title="Edit harga">✏️</button>
+                    <button class="delete-item-btn" data-name="${item.name}" title="Hapus menu">🗑️</button>
+                </div>
+            `;
             container.appendChild(div);
+        });
+        document.querySelectorAll("#incomeListContainer .edit-price-btn").forEach(btn => {
+            btn.addEventListener("click", () => showEditPriceModal(btn.getAttribute("data-name"), parseFloat(btn.getAttribute("data-price"))));
         });
         document.querySelectorAll("#incomeListContainer .delete-item-btn").forEach(btn => {
             btn.addEventListener("click", () => deleteIncomeItem(btn.getAttribute("data-name")));
         });
     }
 
+    async function loadModalItems() {
+        try {
+            const { data, error } = await supabaseClient.from("modal_items").select("*").order("name");
+            if(error) throw error;
+            if(data && data.length > 0) modalItems = data.map(item => item.name);
+            else { for(const item of defaultModalItems) await supabaseClient.from("modal_items").insert([{ name: item }]); modalItems = [...defaultModalItems]; }
+            renderModalList();
+        } catch(e) { modalItems = [...defaultModalItems]; renderModalList(); }
+    }
+
+    async function addModalItem() {
+        const newName = document.getElementById("newModalName").value.trim();
+        if(!newName) { alert("Nama tidak boleh kosong!"); return; }
+        if(modalItems.includes(newName)) { alert("Sudah ada!"); return; }
+        await supabaseClient.from("modal_items").insert([{ name: newName }]);
+        modalItems.push(newName);
+        renderModalList();
+        updateItemDropdown();
+        document.getElementById("newModalName").value = "";
+        alert(`✅ "${newName}" ditambahkan!`);
+    }
+
+    async function deleteModalItem(itemName) {
+        const isUsed = transactions.some(t => t.category === "modal" && t.item === itemName);
+        if(isUsed) { alert(`⚠️ "${itemName}" sudah digunakan!`); return; }
+        if(confirm(`Hapus "${itemName}"?`)) {
+            await supabaseClient.from("modal_items").delete().eq("name", itemName);
+            modalItems = modalItems.filter(i => i !== itemName);
+            renderModalList();
+            updateItemDropdown();
+        }
+    }
+
     function renderModalList() {
         const container = document.getElementById("modalListContainer");
         if(!container) return;
-        if(modalItems.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada biaya modal</div>"; return; }
+        if(modalItems.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada data</div>"; return; }
         container.innerHTML = "";
         modalItems.forEach(item => {
             const div = document.createElement("div"); div.className = "list-item";
@@ -555,10 +589,43 @@
         });
     }
 
+    async function loadOperationalItems() {
+        try {
+            const { data, error } = await supabaseClient.from("operational_items").select("*").order("name");
+            if(error) throw error;
+            if(data && data.length > 0) operationalItems = data.map(item => item.name);
+            else { for(const item of defaultOperationalItems) await supabaseClient.from("operational_items").insert([{ name: item }]); operationalItems = [...defaultOperationalItems]; }
+            renderOperationalList();
+        } catch(e) { operationalItems = [...defaultOperationalItems]; renderOperationalList(); }
+    }
+
+    async function addOperationalItem() {
+        const newName = document.getElementById("newOperationalName").value.trim();
+        if(!newName) { alert("Nama tidak boleh kosong!"); return; }
+        if(operationalItems.includes(newName)) { alert("Sudah ada!"); return; }
+        await supabaseClient.from("operational_items").insert([{ name: newName }]);
+        operationalItems.push(newName);
+        renderOperationalList();
+        updateItemDropdown();
+        document.getElementById("newOperationalName").value = "";
+        alert(`✅ "${newName}" ditambahkan!`);
+    }
+
+    async function deleteOperationalItem(itemName) {
+        const isUsed = transactions.some(t => t.category === "operational" && t.item === itemName);
+        if(isUsed) { alert(`⚠️ "${itemName}" sudah digunakan!`); return; }
+        if(confirm(`Hapus "${itemName}"?`)) {
+            await supabaseClient.from("operational_items").delete().eq("name", itemName);
+            operationalItems = operationalItems.filter(i => i !== itemName);
+            renderOperationalList();
+            updateItemDropdown();
+        }
+    }
+
     function renderOperationalList() {
         const container = document.getElementById("operationalListContainer");
         if(!container) return;
-        if(operationalItems.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada biaya operasional</div>"; return; }
+        if(operationalItems.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada data</div>"; return; }
         container.innerHTML = "";
         operationalItems.forEach(item => {
             const div = document.createElement("div"); div.className = "list-item";
@@ -571,27 +638,26 @@
         });
     }
 
-    // ========== FUNGSI MANAJEMEN USER ==========
+    // ========== MANAJEMEN USER ==========
     async function loadUsers() {
         try {
             const { data, error } = await supabaseClient.from("users").select("*").order("id");
             if(error) throw error;
             allUsers = data || [];
             renderUserList();
-        } catch(e) { console.error("Load users error:", e); }
+        } catch(e) { console.error(e); }
     }
 
     function renderUserList() {
         const container = document.getElementById("userListContainer");
         if(!container) return;
-        const nonOwnerUsers = allUsers.filter(u => u.role !== "owner");
-        if(nonOwnerUsers.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada user selain Owner</div>"; return; }
+        const nonOwner = allUsers.filter(u => u.role !== "owner");
+        if(nonOwner.length === 0) { container.innerHTML = "<div style='text-align:center; padding:15px;'>Belum ada user</div>"; return; }
         container.innerHTML = "";
-        nonOwnerUsers.forEach(user => {
+        nonOwner.forEach(user => {
             const div = document.createElement("div"); div.className = "list-item";
             const roleColor = user.role === "admin" ? "#d9a13b" : "#6f6e5c";
-            const roleName = user.role === "admin" ? "Admin" : "Staff";
-            div.innerHTML = `<div><strong>${user.username}</strong> <span style="background:${roleColor}; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${roleName}</span></div>
+            div.innerHTML = `<div><strong>${user.username}</strong> <span style="background:${roleColor}; color:white; padding:2px 8px; border-radius:20px;">${user.role}</span></div>
                 <button class="delete-item-btn" data-username="${user.username}">🗑️</button>`;
             container.appendChild(div);
         });
@@ -620,7 +686,7 @@
         alert(`✅ User "${username}" ditambahkan!`);
     }
 
-    // ========== FUNGSI TRANSAKSI ==========
+    // ========== TRANSAKSI ==========
     async function loadData() {
         try {
             const { data, error } = await supabaseClient.from("transactions").select("*").order("id", { ascending: false });
@@ -629,35 +695,39 @@
             renderTable();
             updateSummary();
             if(canExportReport()) generateReport();
-        } catch(e) { console.error("Load data error:", e); }
+        } catch(e) { console.error(e); }
     }
 
     function renderTable() {
         const tbody = document.getElementById("tableBody");
         if(!tbody) return;
         tbody.innerHTML = "";
-        if(transactions.length === 0) { tbody.innerHTML = "<tr><td colspan='9'>Belum ada数据</td><tr>"; return; }
+        if(transactions.length === 0) { tbody.innerHTML = "<td><td colspan='10' style='text-align:center'>Belum ada数据</td></tr>"; return; }
         transactions.forEach(tr => {
             const row = tbody.insertRow();
+            const basePrice = (tr.category === "income") ? getBasePrice(tr.item) : 0;
+            const grossProfit = (tr.category === "income") ? (tr.unit_price - basePrice) * tr.quantity : 0;
+            
             row.insertCell(0).innerText = tr.category === "income" ? "💰 Penjualan" : (tr.category === "modal" ? "📦 Biaya Modal" : "⚙️ Operasional");
             row.insertCell(1).innerText = tr.date;
             row.insertCell(2).innerText = tr.item;
             row.insertCell(3).innerText = tr.quantity;
             row.insertCell(4).innerText = formatRupiah(tr.unit_price);
             row.insertCell(5).innerText = formatRupiah(tr.total);
-            row.insertCell(6).innerText = tr.notes || "-";
-            row.insertCell(7).innerHTML = `<span style="font-size:0.65rem; background:#f0f0e8; border-radius:12px; padding:2px 6px;">${tr.created_by}</span>`;
+            row.insertCell(6).innerText = (tr.category === "income") ? formatRupiah(grossProfit) : "-";
+            row.insertCell(7).innerText = tr.notes || "-";
+            row.insertCell(8).innerHTML = `<span style="font-size:0.65rem; background:#f0f0e8; border-radius:12px; padding:2px 6px;">${tr.created_by}</span>`;
             const delBtn = document.createElement("button");
             delBtn.innerText = "❌";
             delBtn.className = "action-btn";
             if(!canDeleteTransaction(tr)) { delBtn.disabled = true; delBtn.style.opacity = "0.4"; }
             else { delBtn.onclick = () => deleteTransaction(tr.id); }
-            row.insertCell(8).appendChild(delBtn);
+            row.insertCell(9).appendChild(delBtn);
         });
     }
 
     function updateSummary() {
-        let ti=0,tm=0,to=0;
+        let ti=0, tm=0, to=0;
         transactions.forEach(t => { if(t.category==="income") ti+=t.total; else if(t.category==="modal") tm+=t.total; else to+=t.total; });
         document.getElementById("totalIncome").innerText = formatRupiah(ti);
         document.getElementById("totalModal").innerText = formatRupiah(tm);
@@ -691,8 +761,9 @@
         }]);
         await loadData();
         document.getElementById("quantity").value = "1";
-        document.getElementById("unitPrice").value = "0";
         document.getElementById("notes").value = "";
+        // Reset harga jual ke harga dasar untuk transaksi berikutnya
+        if(category === "income") setAutoSellingPrice();
     }
 
     async function clearAllData() {
@@ -705,16 +776,20 @@
 
     function exportAllToExcel() {
         if(!canExportAll()) { alert("Hanya Owner!"); return; }
-        if(transactions.length === 0) { alert("Tidak ada data"); return; }
-        const wsData = [["Kategori","Tanggal","Item","Qty","Harga","Total","Catatan","Pembuat"]];
-        transactions.forEach(t => { wsData.push([t.category==="income"?"Pemasukan":(t.category==="modal"?"Modal":"Operasional"), t.date, t.item, t.quantity, t.unit_price, t.total, t.notes||"", t.created_by]); });
+        if(transactions.length === 0) return;
+        const wsData = [["Kategori","Tanggal","Item","Qty","Harga Jual","Total","Laba Kotor","Catatan","Pembuat"]];
+        transactions.forEach(t => {
+            const basePrice = (t.category === "income") ? getBasePrice(t.item) : 0;
+            const grossProfit = (t.category === "income") ? (t.unit_price - basePrice) * t.quantity : 0;
+            wsData.push([t.category==="income"?"Pemasukan":(t.category==="modal"?"Modal":"Operasional"), t.date, t.item, t.quantity, t.unit_price, t.total, grossProfit, t.notes||"", t.created_by]);
+        });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Transaksi");
         XLSX.writeFile(wb, `Transaksi_${new Date().toISOString().slice(0,19)}.xlsx`);
     }
 
-    // ========== FUNGSI LAPORAN ==========
+    // LAPORAN
     function filterByDateRange(start, end) { return transactions.filter(t => t.date >= start && t.date <= end); }
     function generateReport() {
         if(!canExportReport()) return;
@@ -736,27 +811,33 @@
             <div class="card"><h3>Transaksi</h3><div class="value">${filtered.length}</div></div>`;
         const tbody = document.getElementById("reportTableBody");
         tbody.innerHTML = "";
-        if(filtered.length === 0) { tbody.innerHTML = "<tr><td colspan='8'>Tidak ada data</td></table>"; return; }
+        if(filtered.length === 0) { tbody.innerHTML = "<tr><td colspan='9'>Tidak ada data</td></tr>"; return; }
         filtered.sort((a,b)=>b.date.localeCompare(a.date)).forEach(tr => {
+            const basePrice = (tr.category === "income") ? getBasePrice(tr.item) : 0;
+            const grossProfit = (tr.category === "income") ? (tr.unit_price - basePrice) * tr.quantity : 0;
             const row = tbody.insertRow();
             row.insertCell(0).innerText = tr.category==="income"?"Pemasukan":(tr.category==="modal"?"Modal":"Operasional");
             row.insertCell(1).innerText = tr.date; row.insertCell(2).innerText = tr.item; row.insertCell(3).innerText = tr.quantity;
             row.insertCell(4).innerText = formatRupiah(tr.unit_price); row.insertCell(5).innerText = formatRupiah(tr.total);
-            row.insertCell(6).innerText = tr.notes||"-"; row.insertCell(7).innerText = tr.created_by;
+            row.insertCell(6).innerText = (tr.category === "income") ? formatRupiah(grossProfit) : "-";
+            row.insertCell(7).innerText = tr.notes||"-"; row.insertCell(8).innerText = tr.created_by;
         });
     }
     function exportReportToExcel() {
         if(!canExportReport()) { alert("Hanya Owner!"); return; }
-        if(currentReportData.length === 0) { alert("Tidak ada data"); return; }
-        const wsData = [["Kategori","Tanggal","Item","Qty","Harga","Total","Catatan","Pembuat"]];
-        currentReportData.forEach(t => { wsData.push([t.category==="income"?"Pemasukan":(t.category==="modal"?"Modal":"Operasional"), t.date, t.item, t.quantity, t.unit_price, t.total, t.notes||"", t.created_by]); });
+        if(currentReportData.length === 0) return;
+        const wsData = [["Kategori","Tanggal","Item","Qty","Harga Jual","Total","Laba Kotor","Catatan","Pembuat"]];
+        currentReportData.forEach(t => {
+            const basePrice = (t.category === "income") ? getBasePrice(t.item) : 0;
+            const grossProfit = (t.category === "income") ? (t.unit_price - basePrice) * t.quantity : 0;
+            wsData.push([t.category==="income"?"Pemasukan":(t.category==="modal"?"Modal":"Operasional"), t.date, t.item, t.quantity, t.unit_price, t.total, grossProfit, t.notes||"", t.created_by]);
+        });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan");
         XLSX.writeFile(wb, `Laporan_${new Date().toISOString().slice(0,19)}.xlsx`);
     }
 
-    // ========== RENDER UI ==========
     function renderExportButtons() {
         const container = document.getElementById("exportButtonsContainer");
         if(!container) return;
@@ -768,14 +849,14 @@
         const container = document.getElementById("reportPanelContainer");
         if(!container) return;
         if(canExportReport()) {
-            container.innerHTML = `<div class="report-panel"><h3>📊 Laporan & Export <span style="background:#2c7a2d; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem;">👑 Owner</span></h3>
-                <div class="report-header"><div class="report-controls"><div class="form-group" style="margin-bottom:0;"><label>Periode</label><select id="reportType">
+            container.innerHTML = `<div class="report-panel"><h3>📊 Laporan & Export <span style="background:#2c7a2d; color:white; padding:2px 8px; border-radius:20px;">👑 Owner</span></h3>
+                <div><div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;"><div class="form-group" style="margin-bottom:0;"><label>Periode</label><select id="reportType">
                 <option value="daily">📆 Harian</option><option value="weekly">📅 Mingguan</option><option value="monthly">🗓️ Bulanan</option>
                 <option value="yearly">📅 Tahunan</option><option value="custom">📌 Custom</option></select></div>
                 <div id="customDateDiv" style="display:none; gap:8px;"><input type="date" id="startDate"><input type="date" id="endDate"><button id="applyCustomBtn" class="btn-report">Ok</button></div>
                 <button id="generateReportBtn" class="btn-report">Tampilkan</button><button id="exportReportBtn" class="btn-excel">Export Excel</button></div></div>
                 <div id="periodInfo" class="period-badge">Pilih laporan</div><div id="reportSummary" style="display:flex; flex-wrap:wrap; gap:16px; margin:15px 0;"></div>
-                <div style="overflow-x:auto;"><table id="reportTable"><thead><tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga</th><th>Total</th><th>Catatan</th><th>Pembuat</th></tr></thead><tbody id="reportTableBody"><tr><td colspan="8">Pilih laporan</td></tr></tbody></table></div></div>`;
+                <div style="overflow-x:auto;"><table id="reportTable"><thead><tr><th>Kategori</th><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga Jual</th><th>Total</th><th>Laba Kotor</th><th>Catatan</th><th>Pembuat</th></tr></thead><tbody id="reportTableBody"><td><td colspan="9">Pilih laporan</td></tr></tbody></table></div></div>`;
             document.getElementById("reportType").addEventListener("change", function() { const c=document.getElementById("customDateDiv"); if(this.value==="custom") c.style.display="flex"; else { c.style.display="none"; generateReport(); } });
             document.getElementById("generateReportBtn").addEventListener("click", generateReport);
             document.getElementById("exportReportBtn").addEventListener("click", exportReportToExcel);
@@ -790,29 +871,31 @@
     function initTabs() {
         const tabs = { income: document.getElementById("tabIncomeBtn"), modal: document.getElementById("tabModalBtn"), operational: document.getElementById("tabOperationalBtn"), user: document.getElementById("tabUserBtn") };
         const contents = { income: document.getElementById("tabIncome"), modal: document.getElementById("tabModal"), operational: document.getElementById("tabOperational"), user: document.getElementById("tabUser") };
-        const activateTab = (active) => {
-            Object.keys(tabs).forEach(key => { tabs[key].classList.remove("active"); contents[key].classList.remove("active"); });
-            tabs[active].classList.add("active"); contents[active].classList.add("active");
+        const activate = (active) => {
+            Object.keys(tabs).forEach(k => { if(tabs[k]) tabs[k].classList.remove("active"); if(contents[k]) contents[k].classList.remove("active"); });
+            if(tabs[active]) tabs[active].classList.add("active");
+            if(contents[active]) contents[active].classList.add("active");
         };
-        tabs.income.onclick = () => activateTab("income");
-        tabs.modal.onclick = () => activateTab("modal");
-        tabs.operational.onclick = () => activateTab("operational");
-        tabs.user.onclick = () => activateTab("user");
+        if(tabs.income) tabs.income.onclick = () => activate("income");
+        if(tabs.modal) tabs.modal.onclick = () => activate("modal");
+        if(tabs.operational) tabs.operational.onclick = () => activate("operational");
+        if(tabs.user) tabs.user.onclick = () => activate("user");
     }
 
     function updateUIByRole() {
         const isOwner = currentUser?.role === "owner";
-        document.getElementById("managementPanel").style.display = isOwner ? "block" : "none";
-        document.getElementById("clearAllBtn").style.display = isOwner ? "block" : "none";
+        const managementPanel = document.getElementById("managementPanel");
+        if(managementPanel) managementPanel.style.display = isOwner ? "block" : "none";
+        const clearAllBtn = document.getElementById("clearAllBtn");
+        if(clearAllBtn) clearAllBtn.style.display = isOwner ? "block" : "none";
         renderExportButtons();
         const infoPanel = document.getElementById("infoPanel");
-        if(currentUser?.role === "owner") infoPanel.innerHTML = "👑 Owner: semua akses + kelola menu pemasukan, biaya modal, biaya operasional, & user";
-        else if(currentUser?.role === "admin") infoPanel.innerHTML = "🛡️ Admin: Pemasukan & Modal saja";
-        else infoPanel.innerHTML = "📋 Staff: hanya Pemasukan";
+        if(currentUser?.role === "owner") infoPanel.innerHTML = "👑 Owner: mengatur harga dasar produk | Harga jual otomatis sesuai setting Owner";
+        else if(currentUser?.role === "admin") infoPanel.innerHTML = "🛡️ Admin: Pemasukan & Modal saja | Harga jual otomatis terisi";
+        else infoPanel.innerHTML = "📋 Staff: hanya Pemasukan | Harga jual otomatis terisi";
         renderReportPanel();
     }
 
-    // ========== INIT & LOGIN ==========
     async function initSupabase() {
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -837,11 +920,21 @@
             roleSpan.style.background = currentUser.role === "owner" ? "#2c7a2d" : (currentUser.role === "admin" ? "#d9a13b" : "#6f6e5c");
             await loadData();
             await loadUsers();
-            await loadMasterData();
+            await loadIncomeItems();
+            await loadModalItems();
+            await loadOperationalItems();
             updateCategoryDropdown();
             updateUIByRole();
             initTabs();
             if(!document.getElementById("transDate").value) document.getElementById("transDate").value = new Date().toISOString().slice(0,10);
+            
+            // Event listeners
+            document.getElementById("itemSelect").addEventListener("change", function() { 
+                if(document.getElementById("transCategory").value === "income") setAutoSellingPrice(); 
+                updatePriceInfo();
+            });
+            document.getElementById("unitPrice").addEventListener("input", updatePriceInfo);
+            document.getElementById("quantity").addEventListener("input", updatePriceInfo);
         } catch(e) { document.getElementById("loginError").innerText = "Error: " + e.message; }
     }
 
@@ -857,16 +950,17 @@
         document.getElementById("transCategory").value = "income";
         updateCategoryDropdown();
         document.getElementById("quantity").value = "1";
-        document.getElementById("unitPrice").value = "0";
         document.getElementById("notes").value = "";
         document.getElementById("transDate").value = new Date().toISOString().slice(0,10);
+        if(document.getElementById("transCategory").value === "income") setAutoSellingPrice();
+        updatePriceInfo();
     }
 
     document.getElementById("loginBtn").addEventListener("click", login);
     document.getElementById("logoutBtn").addEventListener("click", logout);
     document.getElementById("addBtn").addEventListener("click", addTransaction);
     document.getElementById("resetBtn").addEventListener("click", resetForm);
-    document.getElementById("transCategory").addEventListener("change", updateItemDropdown);
+    document.getElementById("transCategory").addEventListener("change", function() { updateItemDropdown(); updatePriceInfo(); });
     document.getElementById("addIncomeBtn").addEventListener("click", addIncomeItem);
     document.getElementById("addModalBtn").addEventListener("click", addModalItem);
     document.getElementById("addOperationalBtn").addEventListener("click", addOperationalItem);
