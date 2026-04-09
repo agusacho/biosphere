@@ -281,7 +281,7 @@
                 </div>
             </div>
         </div>
-        <footer>👑 Owner: mengatur harga dasar | Harga jual otomatis terisi sesuai harga dasar Owner</footer>
+        <footer>Biosphere Roast Works 2026 by Acho</footer>
     </div>
 </div>
 
@@ -900,7 +900,7 @@
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             await supabaseClient.from("users").select("count", { count: "exact", head: true });
-            document.getElementById("dbStatus").innerHTML = "✅ Database Biosphere Roast Work Connected";
+            document.getElementById("dbStatus").innerHTML = "✅ Database Biosphere Roast Works Connected";
             return true;
         } catch(e) { document.getElementById("dbStatus").innerHTML = "⚠️ " + e.message; return false; }
     }
